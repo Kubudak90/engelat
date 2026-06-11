@@ -5,14 +5,17 @@ export const LEADERBOARD_ABI = [
   {
     type: "function",
     name: "submitScore",
-    inputs: [{ name: "score", type: "uint256" }],
+    inputs: [
+      { name: "coin", type: "bytes32" },
+      { name: "score", type: "uint256" },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
   },
   {
     type: "function",
     name: "getTop",
-    inputs: [],
+    inputs: [{ name: "coin", type: "bytes32" }],
     outputs: [
       { name: "players", type: "address[]" },
       { name: "scores", type: "uint256[]" },
@@ -23,6 +26,7 @@ export const LEADERBOARD_ABI = [
     type: "event",
     name: "ScoreSubmitted",
     inputs: [
+      { name: "coin", type: "bytes32", indexed: true },
       { name: "player", type: "address", indexed: true },
       { name: "score", type: "uint256", indexed: false },
     ],
