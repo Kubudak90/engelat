@@ -16,9 +16,9 @@ describe("course", () => {
   });
 
   it("difficultyForLoop ramps speed up and gap down, with caps/floors", () => {
-    expect(difficultyForLoop(0)).toEqual({ speed: 2.5, gap: 170 });
-    expect(difficultyForLoop(5)).toEqual({ speed: 4.5, gap: 140 });
-    expect(difficultyForLoop(100)).toEqual({ speed: 6, gap: 110 });
+    expect(difficultyForLoop(0)).toEqual({ speed: 2.5, gap: 195 });
+    expect(difficultyForLoop(5)).toEqual({ speed: 4.5, gap: 165 });
+    expect(difficultyForLoop(100)).toEqual({ speed: 6, gap: 135 });
   });
 
   it("centerlineAt returns exact points and interpolates between them", () => {

@@ -6,9 +6,9 @@ export interface Difficulty {
 const BASE_SPEED = 2.5;
 const SPEED_STEP = 0.4;
 const MAX_SPEED = 6.0;
-const BASE_GAP = 170;
+const BASE_GAP = 195;
 const GAP_STEP = 6;
-const MIN_GAP = 110;
+const MIN_GAP = 135;
 
 export function difficultyForLoop(loop: number): Difficulty {
   const speed = Math.min(MAX_SPEED, BASE_SPEED + SPEED_STEP * loop);
