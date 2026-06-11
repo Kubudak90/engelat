@@ -2,24 +2,28 @@
 pragma solidity ^0.8.24;
 
 contract Leaderboard {
-    mapping(address => uint256) public bestScore;
+    // bestScore[coin][player]
+    mapping(bytes32 => mapping(address => uint256)) public bestScore;
 
-    address[] private _topPlayers;
-    uint256[] private _topScores;
+    mapping(bytes32 => address[]) private _topPlayers;
+    mapping(bytes32 => uint256[]) private _topScores;
 
-    event ScoreSubmitted(address indexed player, uint256 score);
+    event ScoreSubmitted(bytes32 indexed coin, address indexed player, uint256 score);
 
-    function submitScore(uint256 score) external {
-        if (score <= bestScore[msg.sender]) {
+    function submitScore(bytes32 coin, uint256 score) external {
+        if (score <= bestScore[coin][msg.sender]) {
             return;
         }
 
-        bestScore[msg.sender] = score;
+        bestScore[coin][msg.sender] = score;
+
+        address[] storage players = _topPlayers[coin];
+        uint256[] storage scores = _topScores[coin];
 
         // Find existing index (if any)
         uint256 existingIndex = type(uint256).max;
-        for (uint256 i = 0; i < _topPlayers.length; i++) {
-            if (_topPlayers[i] == msg.sender) {
+        for (uint256 i = 0; i < players.length; i++) {
+            if (players[i] == msg.sender) {
                 existingIndex = i;
                 break;
             }
@@ -27,54 +31,55 @@ contract Leaderboard {
 
         // Remove existing entry by shifting left
         if (existingIndex != type(uint256).max) {
-            for (uint256 i = existingIndex; i < _topPlayers.length - 1; i++) {
-                _topPlayers[i] = _topPlayers[i + 1];
-                _topScores[i] = _topScores[i + 1];
+            for (uint256 i = existingIndex; i < players.length - 1; i++) {
+                players[i] = players[i + 1];
+                scores[i] = scores[i + 1];
             }
-            _topPlayers.pop();
-            _topScores.pop();
+            players.pop();
+            scores.pop();
         }
 
         // Find insertion point (descending order)
-        uint256 insertAt = _topScores.length;
-        for (uint256 i = 0; i < _topScores.length; i++) {
-            if (score > _topScores[i]) {
+        uint256 insertAt = scores.length;
+        for (uint256 i = 0; i < scores.length; i++) {
+            if (score > scores[i]) {
                 insertAt = i;
                 break;
             }
         }
 
         // Insert at insertAt by shifting right
-        _topPlayers.push();
-        _topScores.push();
-        for (uint256 i = _topPlayers.length - 1; i > insertAt; i--) {
-            _topPlayers[i] = _topPlayers[i - 1];
-            _topScores[i] = _topScores[i - 1];
+        players.push();
+        scores.push();
+        for (uint256 i = players.length - 1; i > insertAt; i--) {
+            players[i] = players[i - 1];
+            scores[i] = scores[i - 1];
         }
-        _topPlayers[insertAt] = msg.sender;
-        _topScores[insertAt] = score;
+        players[insertAt] = msg.sender;
+        scores[insertAt] = score;
 
         // Cap at 10
-        if (_topPlayers.length > 10) {
-            _topPlayers.pop();
-            _topScores.pop();
+        if (players.length > 10) {
+            players.pop();
+            scores.pop();
         }
 
-        emit ScoreSubmitted(msg.sender, score);
+        emit ScoreSubmitted(coin, msg.sender, score);
     }
 
-    function getTop()
+    function getTop(bytes32 coin)
         external
         view
         returns (address[] memory players, uint256[] memory scores)
     {
-        uint256 len = _topPlayers.length;
+        address[] storage tp = _topPlayers[coin];
+        uint256[] storage ts = _topScores[coin];
+        uint256 len = tp.length;
         players = new address[](len);
         scores = new uint256[](len);
         for (uint256 i = 0; i < len; i++) {
-            players[i] = _topPlayers[i];
-            scores[i] = _topScores[i];
+            players[i] = tp[i];
+            scores[i] = ts[i];
         }
-        return (players, scores);
     }
 }
