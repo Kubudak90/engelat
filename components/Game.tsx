@@ -1,44 +1,44 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  normalizeSeries,
+  difficultyForLoop,
+  centerlineAt,
+  loopCountAt,
+} from "@/lib/course";
 
 interface GameProps {
-  onGameOver?: (score: number) => void;
+  coin: string;
+  closes: number[];
+  last?: number;
+  onGameOver?: (coin: string, score: number) => void;
 }
 
 const GRAVITY = 0.4;
 const FLAP_STRENGTH = -7;
-const OBSTACLE_SPEED = 3;
-const OBSTACLE_GAP = 160;
-const OBSTACLE_WIDTH = 60;
-const SPAWN_INTERVAL = 1800; // ms
 const BIRD_SIZE = 28;
+const BIRD_X = 80;
 const GROUND_HEIGHT = 40;
+const SEGMENT_WIDTH = 60; // px per candle segment
+const BAND_TOP_FRAC = 0.15; // highest price maps here
+const BAND_BOTTOM_FRAC = 0.85; // lowest price maps here
+const COLUMN_STEP = 6; // px between wall sample columns
 
-interface Bird {
-  x: number;
-  y: number;
-  vy: number;
+function bestKey(coin: string): string {
+  return `engelat_best_score_${coin}`;
 }
-
-interface Obstacle {
-  x: number;
-  topHeight: number;
-  passed: boolean;
-}
-
-function getBestScore(): number {
+function getBestScore(coin: string): number {
   if (typeof window === "undefined") return 0;
-  const raw = window.localStorage.getItem("engelat_best_score");
+  const raw = window.localStorage.getItem(bestKey(coin));
   return raw ? parseInt(raw, 10) || 0 : 0;
 }
-
-function setBestScore(score: number) {
+function setBestScore(coin: string, score: number) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem("engelat_best_score", String(score));
+  window.localStorage.setItem(bestKey(coin), String(score));
 }
 
-export function Game({ onGameOver }: GameProps) {
+export function Game({ coin, closes, last, onGameOver }: GameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [score, setScore] = useState(0);
@@ -46,31 +46,34 @@ export function Game({ onGameOver }: GameProps) {
   const [gameOver, setGameOver] = useState(false);
   const [started, setStarted] = useState(false);
 
+  const normalizedRef = useRef<number[]>(normalizeSeries(closes));
+
   const stateRef = useRef({
-    bird: { x: 80, y: 200, vy: 0 } as Bird,
-    obstacles: [] as Obstacle[],
+    bird: { y: 200, vy: 0 },
+    worldX: 0,
     score: 0,
     gameOver: false,
     started: false,
-    lastSpawn: 0,
     width: 0,
     height: 0,
     rafId: 0,
   });
 
-  // Initialize best score on mount
   useEffect(() => {
-    setBest(getBestScore());
-  }, []);
+    normalizedRef.current = normalizeSeries(closes);
+  }, [closes]);
+
+  useEffect(() => {
+    setBest(getBestScore(coin));
+  }, [coin]);
 
   const resetGame = useCallback(() => {
     const st = stateRef.current;
-    st.bird = { x: 80, y: st.height / 2, vy: 0 };
-    st.obstacles = [];
+    st.bird = { y: st.height / 2, vy: 0 };
+    st.worldX = 0;
     st.score = 0;
     st.gameOver = false;
     st.started = false;
-    st.lastSpawn = 0;
     setScore(0);
     setGameOver(false);
     setStarted(false);
@@ -80,16 +83,13 @@ export function Game({ onGameOver }: GameProps) {
     const st = stateRef.current;
     if (st.started || st.gameOver) return;
     st.started = true;
-    st.lastSpawn = performance.now();
     setStarted(true);
   }, []);
 
   const flap = useCallback(() => {
     const st = stateRef.current;
     if (st.gameOver) return;
-    if (!st.started) {
-      startGame();
-    }
+    if (!st.started) startGame();
     st.bird.vy = FLAP_STRENGTH;
   }, [startGame]);
 
@@ -123,206 +123,183 @@ export function Game({ onGameOver }: GameProps) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
     const st = stateRef.current;
 
-    const spawnObstacle = (now: number) => {
-      const h = st.height;
-      const minTop = 60;
-      const maxTop = h - OBSTACLE_GAP - GROUND_HEIGHT - 60;
-      const topHeight = minTop + Math.random() * (maxTop - minTop);
-      st.obstacles.push({
-        x: st.width,
-        topHeight,
-        passed: false,
-      });
-      st.lastSpawn = now;
+    const playBottom = () => st.height - GROUND_HEIGHT;
+    const bandTop = () => playBottom() * BAND_TOP_FRAC;
+    const bandBottom = () => playBottom() * BAND_BOTTOM_FRAC;
+    // high price (t=1) → bandTop; low price (t=0) → bandBottom
+    const centerYForT = (t: number) =>
+      bandBottom() - t * (bandBottom() - bandTop());
+    const posForScreenX = (sx: number) =>
+      (st.worldX + (sx - BIRD_X)) / SEGMENT_WIDTH;
+
+    const currentDifficulty = () => {
+      const n = normalizedRef.current.length;
+      const pos = st.worldX / SEGMENT_WIDTH;
+      return difficultyForLoop(loopCountAt(pos, n));
     };
 
     const checkCollision = (): boolean => {
-      const bird = st.bird;
-      const h = st.height;
-
-      // Ceiling
-      if (bird.y < 0) return true;
-      // Ground
-      if (bird.y + BIRD_SIZE > h - GROUND_HEIGHT) return true;
-
-      // Obstacles
-      for (const obs of st.obstacles) {
-        if (
-          bird.x + BIRD_SIZE > obs.x &&
-          bird.x < obs.x + OBSTACLE_WIDTH &&
-          (bird.y < obs.topHeight || bird.y + BIRD_SIZE > obs.topHeight + OBSTACLE_GAP)
-        ) {
-          return true;
-        }
-      }
+      const t = centerlineAt(normalizedRef.current, st.worldX / SEGMENT_WIDTH);
+      const cy = centerYForT(t);
+      const gap = currentDifficulty().gap;
+      const birdTop = st.bird.y;
+      const birdBottom = st.bird.y + BIRD_SIZE;
+      if (birdTop < cy - gap / 2) return true;
+      if (birdBottom > cy + gap / 2) return true;
+      if (birdTop < 0) return true;
+      if (birdBottom > playBottom()) return true;
       return false;
     };
 
     const update = (now: number) => {
       if (st.gameOver) return;
-
       const bird = st.bird;
 
       if (st.started) {
         bird.vy += GRAVITY;
         bird.y += bird.vy;
+        st.worldX += currentDifficulty().speed;
 
-        // Spawn obstacles
-        if (now - st.lastSpawn > SPAWN_INTERVAL) {
-          spawnObstacle(now);
+        const seg = Math.floor(st.worldX / SEGMENT_WIDTH);
+        if (seg > st.score) {
+          st.score = seg;
+          setScore(seg);
         }
 
-        // Move obstacles
-        for (const obs of st.obstacles) {
-          obs.x -= OBSTACLE_SPEED;
-
-          // Score when bird passes obstacle
-          if (!obs.passed && obs.x + OBSTACLE_WIDTH < bird.x) {
-            obs.passed = true;
-            st.score += 1;
-            setScore(st.score);
-          }
-        }
-
-        // Remove off-screen obstacles
-        st.obstacles = st.obstacles.filter((obs) => obs.x + OBSTACLE_WIDTH > -10);
-
-        // Collision
         if (checkCollision()) {
           st.gameOver = true;
           setGameOver(true);
-          const currentBest = getBestScore();
-          if (st.score > currentBest) {
-            setBestScore(st.score);
+          if (st.score > getBestScore(coin)) {
+            setBestScore(coin, st.score);
             setBest(st.score);
           }
-          onGameOver?.(st.score);
-          return;
+          onGameOver?.(coin, st.score);
         }
       } else {
-        // Idle float
-        bird.y = st.height / 2 + Math.sin(now / 400) * 10;
+        // Rest at the corridor center so the start is fair
+        const t = centerlineAt(normalizedRef.current, st.worldX / SEGMENT_WIDTH);
+        bird.y = centerYForT(t) - BIRD_SIZE / 2 + Math.sin(now / 400) * 6;
+        bird.vy = 0;
       }
     };
 
     const draw = () => {
       const w = st.width;
       const h = st.height;
+      const norm = normalizedRef.current;
+      const gap = currentDifficulty().gap;
 
       // Background
       ctx.fillStyle = "#1a1a2e";
       ctx.fillRect(0, 0, w, h);
 
-      // Stars / particles
+      // Stars
       ctx.fillStyle = "#ffffff20";
       for (let i = 0; i < 20; i++) {
-        const sx = ((i * 137) % w);
-        const sy = ((i * 53) % (h - GROUND_HEIGHT));
-        ctx.fillRect(sx, sy, 2, 2);
+        ctx.fillRect((i * 137) % w, (i * 53) % (h - GROUND_HEIGHT), 2, 2);
       }
 
-      // Obstacles
-      for (const obs of st.obstacles) {
-        // Top pipe
-        ctx.fillStyle = "#e94560";
-        ctx.fillRect(obs.x, 0, OBSTACLE_WIDTH, obs.topHeight);
-        ctx.fillStyle = "#c13651";
-        ctx.fillRect(obs.x - 2, obs.topHeight - 20, OBSTACLE_WIDTH + 4, 20);
-
-        // Bottom pipe
-        const bottomY = obs.topHeight + OBSTACLE_GAP;
-        const bottomH = h - GROUND_HEIGHT - bottomY;
-        ctx.fillStyle = "#e94560";
-        ctx.fillRect(obs.x, bottomY, OBSTACLE_WIDTH, bottomH);
-        ctx.fillStyle = "#c13651";
-        ctx.fillRect(obs.x - 2, bottomY, OBSTACLE_WIDTH + 4, 20);
+      // Top canyon wall
+      ctx.fillStyle = "#e94560";
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      for (let sx = 0; sx <= w; sx += COLUMN_STEP) {
+        const cy = centerYForT(centerlineAt(norm, posForScreenX(sx)));
+        ctx.lineTo(sx, cy - gap / 2);
       }
+      ctx.lineTo(w, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      // Bottom canyon wall
+      ctx.beginPath();
+      ctx.moveTo(0, playBottom());
+      for (let sx = 0; sx <= w; sx += COLUMN_STEP) {
+        const cy = centerYForT(centerlineAt(norm, posForScreenX(sx)));
+        ctx.lineTo(sx, cy + gap / 2);
+      }
+      ctx.lineTo(w, playBottom());
+      ctx.closePath();
+      ctx.fill();
 
       // Ground
       ctx.fillStyle = "#0f3460";
-      ctx.fillRect(0, h - GROUND_HEIGHT, w, GROUND_HEIGHT);
+      ctx.fillRect(0, playBottom(), w, GROUND_HEIGHT);
       ctx.fillStyle = "#16213e";
-      ctx.fillRect(0, h - GROUND_HEIGHT, w, 4);
+      ctx.fillRect(0, playBottom(), w, 4);
 
       // Bird
       const bird = st.bird;
       ctx.fillStyle = "#f7d794";
       ctx.beginPath();
-      ctx.arc(bird.x + BIRD_SIZE / 2, bird.y + BIRD_SIZE / 2, BIRD_SIZE / 2, 0, Math.PI * 2);
+      ctx.arc(BIRD_X + BIRD_SIZE / 2, bird.y + BIRD_SIZE / 2, BIRD_SIZE / 2, 0, Math.PI * 2);
       ctx.fill();
-      // Eye
       ctx.fillStyle = "#1a1a2e";
       ctx.beginPath();
-      ctx.arc(bird.x + BIRD_SIZE * 0.7, bird.y + BIRD_SIZE * 0.35, 3, 0, Math.PI * 2);
+      ctx.arc(BIRD_X + BIRD_SIZE * 0.7, bird.y + BIRD_SIZE * 0.35, 3, 0, Math.PI * 2);
       ctx.fill();
-      // Beak
       ctx.fillStyle = "#e58e26";
       ctx.beginPath();
-      ctx.moveTo(bird.x + BIRD_SIZE, bird.y + BIRD_SIZE * 0.45);
-      ctx.lineTo(bird.x + BIRD_SIZE + 8, bird.y + BIRD_SIZE * 0.6);
-      ctx.lineTo(bird.x + BIRD_SIZE, bird.y + BIRD_SIZE * 0.75);
+      ctx.moveTo(BIRD_X + BIRD_SIZE, bird.y + BIRD_SIZE * 0.45);
+      ctx.lineTo(BIRD_X + BIRD_SIZE + 8, bird.y + BIRD_SIZE * 0.6);
+      ctx.lineTo(BIRD_X + BIRD_SIZE, bird.y + BIRD_SIZE * 0.75);
       ctx.fill();
 
-      // Score
+      // HUD: score + best
       ctx.fillStyle = "#fff";
       ctx.font = "bold 32px sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(String(st.score), w / 2, 60);
-
-      // Best
       ctx.fillStyle = "#ffffff80";
       ctx.font = "14px sans-serif";
       ctx.fillText(`Best: ${best}`, w / 2, 85);
 
+      // HUD: coin label
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#f7d794";
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillText(`${coin}${last ? `  $${last.toLocaleString()}` : ""}`, 16, 28);
+      ctx.fillStyle = "#ffffff60";
+      ctx.font = "11px sans-serif";
+      ctx.fillText("son 150 mum · grafikten parkur", 16, 44);
+
       // Start hint
       if (!st.started && !st.gameOver) {
+        ctx.textAlign = "center";
         ctx.fillStyle = "#ffffffcc";
         ctx.font = "bold 18px sans-serif";
-        ctx.fillText("Tap, Click, or Space to start", w / 2, h / 2 + 60);
+        ctx.fillText("Tap, Click veya Space ile başla", w / 2, h / 2 + 80);
       }
     };
 
-    let lastTime = performance.now();
     const loop = (now: number) => {
-      const dt = now - lastTime;
-      lastTime = now;
-
       update(now);
       draw();
-
       st.rafId = requestAnimationFrame(loop);
     };
 
     st.rafId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(st.rafId);
-  }, [best, onGameOver]);
+  }, [best, onGameOver, coin, last]);
 
-  // Input handlers
+  // Keyboard
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.code === "Space") {
         e.preventDefault();
-        if (stateRef.current.gameOver) {
-          resetGame();
-        } else {
-          flap();
-        }
+        if (stateRef.current.gameOver) resetGame();
+        else flap();
       }
     };
-
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [flap, resetGame]);
 
   const handlePointerDown = useCallback(() => {
-    if (stateRef.current.gameOver) {
-      resetGame();
-    } else {
-      flap();
-    }
+    if (stateRef.current.gameOver) resetGame();
+    else flap();
   }, [flap, resetGame]);
 
   return (
@@ -341,20 +318,14 @@ export function Game({ onGameOver }: GameProps) {
     >
       <canvas
         ref={canvasRef}
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-        }}
+        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
       />
 
       {gameOver && (
         <div
           style={{
             position: "absolute",
-            top: "50%",
+            top: "40%",
             left: "50%",
             transform: "translate(-50%, -50%)",
             textAlign: "center",
@@ -371,7 +342,9 @@ export function Game({ onGameOver }: GameProps) {
             }}
           >
             <p style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Game Over</p>
-            <p style={{ fontSize: 18, marginBottom: 16 }}>Score: {score}</p>
+            <p style={{ fontSize: 18, marginBottom: 16 }}>
+              {coin} · Score: {score}
+            </p>
             <button
               onPointerDown={(e) => {
                 e.stopPropagation();
