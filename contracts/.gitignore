@@ -2,3 +2,6 @@
 out/
 cache/
 broadcast/
+
+# Secrets — deployer key, never commit
+.env
