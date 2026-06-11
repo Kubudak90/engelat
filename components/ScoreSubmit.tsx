@@ -15,20 +15,22 @@ import {
 } from "@coinbase/onchainkit/wallet";
 import { baseSepolia } from "wagmi/chains";
 import { LEADERBOARD_ABI, LEADERBOARD_ADDRESS } from "@/lib/leaderboard";
+import { coinKey } from "@/lib/coins";
 import type { ContractFunctionParameters } from "viem";
 
 interface ScoreSubmitProps {
+  coin: string;
   score: number;
   onSubmitted?: () => void;
 }
 
-export function ScoreSubmit({ score, onSubmitted }: ScoreSubmitProps) {
+export function ScoreSubmit({ coin, score, onSubmitted }: ScoreSubmitProps) {
   const contracts = [
     {
       address: LEADERBOARD_ADDRESS,
       abi: LEADERBOARD_ABI,
       functionName: "submitScore",
-      args: [BigInt(score)],
+      args: [coinKey(coin), BigInt(score)],
     },
   ] as ContractFunctionParameters[];
 
