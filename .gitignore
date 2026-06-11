@@ -1,4 +1,9 @@
 node_modules
 .next
+.env
 .env*.local
 out
+
+# build / test artifacts
+*.tsbuildinfo
+.playwright-mcp/
