@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Engelat asset render</title></head>
+<body>
+<script>
+const BG = "#1a1a2e", WALL = "#e94560", UP = "#2ecc71", BIRD = "#f7d794",
+      BEAK = "#e58e26", GROUND = "#0f3460", TEXT = "#ffffff";
+
+function bird(ctx, cx, cy, r) {
+  ctx.fillStyle = BIRD;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#1a1a2e";
+  ctx.beginPath(); ctx.arc(cx + r * 0.4, cy - r * 0.3, r * 0.12, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = BEAK;
+  ctx.beginPath();
+  ctx.moveTo(cx + r, cy - r * 0.1);
+  ctx.lineTo(cx + r * 1.5, cy + r * 0.1);
+  ctx.lineTo(cx + r, cy + r * 0.3);
+  ctx.fill();
+}
+
+// A chart polyline + candles across width w at vertical center band
+function chart(ctx, w, h, yBase, amp) {
+  const pts = [0.15,0.55,0.30,0.70,0.45,0.25,0.62,0.80,0.50,0.90,0.40];
+  ctx.lineWidth = Math.max(3, w * 0.006);
+  ctx.strokeStyle = UP;
+  ctx.beginPath();
+  pts.forEach((p, i) => {
+    const x = (i / (pts.length - 1)) * w;
+    const y = yBase - (p - 0.5) * amp;
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  });
+  ctx.stroke();
+  // candles
+  pts.forEach((p, i) => {
+    const x = (i / (pts.length - 1)) * w;
+    const y = yBase - (p - 0.5) * amp;
+    const up = i % 2 === 0;
+    ctx.fillStyle = up ? UP : WALL;
+    const cw = Math.max(4, w * 0.012);
+    ctx.fillRect(x - cw / 2, Math.min(y, yBase), cw, Math.abs(yBase - y) + cw);
+  });
+}
+
+function drawIcon(ctx, s) {
+  ctx.fillStyle = BG; ctx.fillRect(0, 0, s, s);
+  chart(ctx, s, s, s * 0.62, s * 0.5);
+  bird(ctx, s * 0.40, s * 0.42, s * 0.13);
+}
+
+function drawSplash(ctx, s) {
+  ctx.fillStyle = BG; ctx.fillRect(0, 0, s, s);
+  chart(ctx, s, s, s * 0.64, s * 0.45);
+  bird(ctx, s * 0.42, s * 0.44, s * 0.16);
+}
+
+function drawHero(ctx, w, h) {
+  ctx.fillStyle = BG; ctx.fillRect(0, 0, w, h);
+  chart(ctx, w, h, h * 0.58, h * 0.6);
+  ctx.fillStyle = GROUND; ctx.fillRect(0, h - h * 0.08, w, h * 0.08);
+  bird(ctx, w * 0.30, h * 0.46, h * 0.09);
+  ctx.fillStyle = TEXT;
+  ctx.font = `bold ${Math.round(h * 0.15)}px sans-serif`;
+  ctx.textBaseline = "middle";
+  ctx.fillText("ENGELAT", w * 0.42, h * 0.40);
+  ctx.fillStyle = "#ffffffcc";
+  ctx.font = `${Math.round(h * 0.06)}px sans-serif`;
+  ctx.fillText("Fly through the chart", w * 0.42, h * 0.58);
+}
+
+window.renderAsset = function (name) {
+  const sizes = { icon: [1024, 1024], splash: [200, 200], hero: [1200, 630] };
+  const [w, h] = sizes[name];
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const ctx = c.getContext("2d");
+  if (name === "icon") drawIcon(ctx, w);
+  else if (name === "splash") drawSplash(ctx, w);
+  else drawHero(ctx, w, h);
+  return c.toDataURL("image/png");
+};
+</script>
+</body>
+</html>
