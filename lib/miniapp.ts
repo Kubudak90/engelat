@@ -1,8 +1,11 @@
+import type { MiniAppManifest } from "@coinbase/onchainkit/minikit";
+
 export const MINIAPP = {
   name: "Engelat",
   subtitle: "Fly through the chart",
   description:
     "A Flappy-style game where a coin's live price chart becomes the obstacle course. Compete on an onchain per-coin leaderboard on Base.",
+  buttonTitle: "Play Engelat",
   primaryCategory: "games",
   tags: ["game", "flappy", "crypto", "chart"],
   splashBackgroundColor: "#1a1a2e",
@@ -38,7 +41,7 @@ export function buildEmbed(base: string) {
     version: "1",
     imageUrl: a.hero,
     button: {
-      title: "Play Engelat",
+      title: MINIAPP.buttonTitle,
       action: {
         type: "launch_miniapp",
         name: MINIAPP.name,
@@ -58,12 +61,12 @@ export function accountAssociationFromEnv(): AccountAssociation | undefined {
   return undefined;
 }
 
-export function buildManifest(base: string, assoc?: AccountAssociation) {
+export function buildManifest(
+  base: string,
+  assoc?: AccountAssociation
+): MiniAppManifest {
   const a = assetUrls(base);
-  const manifest: {
-    accountAssociation?: AccountAssociation;
-    miniapp: Record<string, unknown>;
-  } = {
+  const manifest: MiniAppManifest = {
     miniapp: {
       version: "1",
       name: MINIAPP.name,

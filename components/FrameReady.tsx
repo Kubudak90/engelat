@@ -8,13 +8,13 @@ import { useMiniKit } from "@coinbase/onchainkit/minikit";
  * launch splash. Safe no-op outside a Mini App host. Renders nothing.
  */
 export function FrameReady() {
-  const { setFrameReady, isFrameReady } = useMiniKit();
+  const { setMiniAppReady, isMiniAppReady } = useMiniKit();
 
   useEffect(() => {
-    if (!isFrameReady) {
-      setFrameReady();
+    if (!isMiniAppReady) {
+      setMiniAppReady();
     }
-  }, [isFrameReady, setFrameReady]);
+  }, [isMiniAppReady, setMiniAppReady]);
 
   return null;
 }

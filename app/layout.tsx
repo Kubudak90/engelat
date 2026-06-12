@@ -4,11 +4,19 @@ import { Providers } from "./providers";
 import { FrameReady } from "@/components/FrameReady";
 import { baseUrl, assetUrls, buildEmbed, MINIAPP } from "@/lib/miniapp";
 
+function safeUrl(value: string): URL {
+  try {
+    return new URL(value);
+  } catch {
+    return new URL("http://localhost:3000");
+  }
+}
+
 export function generateMetadata(): Metadata {
   const base = baseUrl();
   const a = assetUrls(base);
   return {
-    metadataBase: new URL(base),
+    metadataBase: safeUrl(base),
     title: MINIAPP.name,
     description: MINIAPP.description,
     openGraph: {

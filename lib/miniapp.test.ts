@@ -28,6 +28,7 @@ describe("miniapp", () => {
     expect(e.imageUrl).toBe("https://x.com/hero.png");
     expect(e.button.title).toBe("Play Engelat");
     expect(e.button.action.type).toBe("launch_miniapp");
+    expect(e.button.action.name).toBe(MINIAPP.name);
     expect(e.button.action.url).toBe("https://x.com");
     expect(e.button.action.splashImageUrl).toBe("https://x.com/splash.png");
     expect(e.button.action.splashBackgroundColor).toBe(MINIAPP.splashBackgroundColor);
