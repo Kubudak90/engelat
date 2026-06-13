@@ -24,6 +24,7 @@ const SEGMENT_WIDTH = 60; // px per candle segment
 const BAND_TOP_FRAC = 0.15; // highest price maps here
 const BAND_BOTTOM_FRAC = 0.85; // lowest price maps here
 const COLUMN_STEP = 6; // px between wall sample columns
+const LEAD_IN_SEGMENTS = 4; // flat runway before the chart starts (fair start)
 
 function bestKey(coin: string): string {
   return `engelat_best_score_${coin}`;
@@ -134,6 +135,11 @@ export function Game({ coin, closes, last, onGameOver }: GameProps) {
     const posForScreenX = (sx: number) =>
       (st.worldX + (sx - BIRD_X)) / SEGMENT_WIDTH;
 
+    // Flat lead-in: corridor stays flat (at the chart's first value) for the first
+    // LEAD_IN_SEGMENTS, so a chart that opens with a steep move can't kill instantly.
+    const courseT = (pos: number) =>
+      centerlineAt(normalizedRef.current, Math.max(0, pos - LEAD_IN_SEGMENTS));
+
     const currentDifficulty = () => {
       const n = normalizedRef.current.length;
       const pos = st.worldX / SEGMENT_WIDTH;
@@ -141,7 +147,7 @@ export function Game({ coin, closes, last, onGameOver }: GameProps) {
     };
 
     const checkCollision = (): boolean => {
-      const t = centerlineAt(normalizedRef.current, st.worldX / SEGMENT_WIDTH);
+      const t = courseT(st.worldX / SEGMENT_WIDTH);
       const cy = centerYForT(t);
       const gap = currentDifficulty().gap;
       const birdTop = st.bird.y;
@@ -162,7 +168,7 @@ export function Game({ coin, closes, last, onGameOver }: GameProps) {
         bird.y += bird.vy;
         st.worldX += currentDifficulty().speed;
 
-        const seg = Math.floor(st.worldX / SEGMENT_WIDTH);
+        const seg = Math.max(0, Math.floor(st.worldX / SEGMENT_WIDTH) - LEAD_IN_SEGMENTS);
         if (seg > st.score) {
           st.score = seg;
           setScore(seg);
@@ -179,7 +185,7 @@ export function Game({ coin, closes, last, onGameOver }: GameProps) {
         }
       } else {
         // Rest at the corridor center so the start is fair
-        const t = centerlineAt(normalizedRef.current, st.worldX / SEGMENT_WIDTH);
+        const t = courseT(st.worldX / SEGMENT_WIDTH);
         bird.y = centerYForT(t) - BIRD_SIZE / 2 + Math.sin(now / 400) * 6;
         bird.vy = 0;
       }
@@ -188,7 +194,6 @@ export function Game({ coin, closes, last, onGameOver }: GameProps) {
     const draw = () => {
       const w = st.width;
       const h = st.height;
-      const norm = normalizedRef.current;
       const gap = currentDifficulty().gap;
 
       // Background
@@ -206,7 +211,7 @@ export function Game({ coin, closes, last, onGameOver }: GameProps) {
       ctx.beginPath();
       ctx.moveTo(0, 0);
       for (let sx = 0; sx <= w; sx += COLUMN_STEP) {
-        const cy = centerYForT(centerlineAt(norm, posForScreenX(sx)));
+        const cy = centerYForT(courseT(posForScreenX(sx)));
         ctx.lineTo(sx, cy - gap / 2);
       }
       ctx.lineTo(w, 0);
@@ -217,7 +222,7 @@ export function Game({ coin, closes, last, onGameOver }: GameProps) {
       ctx.beginPath();
       ctx.moveTo(0, playBottom());
       for (let sx = 0; sx <= w; sx += COLUMN_STEP) {
-        const cy = centerYForT(centerlineAt(norm, posForScreenX(sx)));
+        const cy = centerYForT(courseT(posForScreenX(sx)));
         ctx.lineTo(sx, cy + gap / 2);
       }
       ctx.lineTo(w, playBottom());
@@ -247,23 +252,20 @@ export function Game({ coin, closes, last, onGameOver }: GameProps) {
       ctx.lineTo(BIRD_X + BIRD_SIZE, bird.y + BIRD_SIZE * 0.75);
       ctx.fill();
 
-      // HUD: score + best
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 32px sans-serif";
+      // HUD: score + best (center, pushed below the top buttons)
       ctx.textAlign = "center";
-      ctx.fillText(String(st.score), w / 2, 60);
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 30px sans-serif";
+      ctx.fillText(String(st.score), w / 2, 74);
       ctx.fillStyle = "#ffffff80";
-      ctx.font = "14px sans-serif";
-      ctx.fillText(`Best: ${best}`, w / 2, 85);
+      ctx.font = "13px sans-serif";
+      ctx.fillText(`Best: ${best}`, w / 2, 96);
 
-      // HUD: coin label
+      // HUD: coin label (left, on the same line as score — clear of the top buttons)
       ctx.textAlign = "left";
       ctx.fillStyle = "#f7d794";
-      ctx.font = "bold 16px sans-serif";
-      ctx.fillText(`${coin}${last ? `  $${last.toLocaleString()}` : ""}`, 16, 28);
-      ctx.fillStyle = "#ffffff60";
-      ctx.font = "11px sans-serif";
-      ctx.fillText("son 150 mum · grafikten parkur", 16, 44);
+      ctx.font = "bold 13px sans-serif";
+      ctx.fillText(`${coin}${last ? `  $${last.toLocaleString()}` : ""}`, 16, 74);
 
       // Start hint
       if (!st.started && !st.gameOver) {
