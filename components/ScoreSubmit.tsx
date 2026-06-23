@@ -13,10 +13,11 @@ import {
   WalletDropdown,
   WalletDropdownDisconnect,
 } from "@coinbase/onchainkit/wallet";
-import { baseSepolia } from "wagmi/chains";
+import { useReadContract } from "wagmi";
+import { base } from "wagmi/chains";
+import { encodeFunctionData, formatEther } from "viem";
 import { LEADERBOARD_ABI, LEADERBOARD_ADDRESS } from "@/lib/leaderboard";
 import { coinKey } from "@/lib/coins";
-import type { ContractFunctionParameters } from "viem";
 
 interface ScoreSubmitProps {
   coin: string;
@@ -24,30 +25,41 @@ interface ScoreSubmitProps {
   onSubmitted?: () => void;
 }
 
+// Fallback used only until the on-chain fee() read resolves. Matches the
+// deployed default (0.000003 ETH); the contract is the source of truth.
+const DEFAULT_FEE = BigInt("3000000000000");
+
 export function ScoreSubmit({ coin, score, onSubmitted }: ScoreSubmitProps) {
-  const contracts = [
-    {
-      address: LEADERBOARD_ADDRESS,
-      abi: LEADERBOARD_ABI,
-      functionName: "submitScore",
-      args: [coinKey(coin), BigInt(score)],
-    },
-  ] as ContractFunctionParameters[];
+  const { data: feeData } = useReadContract({
+    address: LEADERBOARD_ADDRESS,
+    abi: LEADERBOARD_ABI,
+    functionName: "fee",
+    chainId: base.id,
+    query: { enabled: !!LEADERBOARD_ADDRESS },
+  });
 
   if (!LEADERBOARD_ADDRESS) {
     return (
-      <div
-        style={{
-          padding: 12,
-          fontSize: 13,
-          color: "#ffffff80",
-          textAlign: "center",
-        }}
-      >
+      <div style={{ padding: 12, fontSize: 13, color: "#ffffff80", textAlign: "center" }}>
         Leaderboard not deployed yet
       </div>
     );
   }
+
+  const fee = (feeData as bigint | undefined) ?? DEFAULT_FEE;
+
+  // Raw call so we can attach `value` (the submission fee) to the contract write.
+  const calls = [
+    {
+      to: LEADERBOARD_ADDRESS,
+      data: encodeFunctionData({
+        abi: LEADERBOARD_ABI,
+        functionName: "submitScore",
+        args: [coinKey(coin), BigInt(score)],
+      }),
+      value: fee,
+    },
+  ];
 
   return (
     <div
@@ -55,7 +67,7 @@ export function ScoreSubmit({ coin, score, onSubmitted }: ScoreSubmitProps) {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 12,
+        gap: 10,
         width: "100%",
       }}
     >
@@ -66,17 +78,16 @@ export function ScoreSubmit({ coin, score, onSubmitted }: ScoreSubmitProps) {
         </WalletDropdown>
       </Wallet>
 
-      <Transaction
-        chainId={baseSepolia.id}
-        calls={contracts}
-        onSuccess={onSubmitted}
-      >
-        <TransactionButton text="Submit Score" />
+      <Transaction chainId={base.id} calls={calls} onSuccess={onSubmitted}>
+        <TransactionButton text={`Submit Score · ${formatEther(fee)} ETH`} />
         <TransactionStatus>
           <TransactionStatusLabel />
           <TransactionStatusAction />
         </TransactionStatus>
       </Transaction>
+      <p style={{ fontSize: 11, color: "#ffffff66", textAlign: "center", maxWidth: 280 }}>
+        Base mainnet · only a new personal best is recorded.
+      </p>
     </div>
   );
 }

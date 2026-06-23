@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+/// @title Engelat per-coin arcade leaderboard (Base mainnet)
+/// @notice A new personal-best submission requires a tiny fee, which is
+///         forwarded in full to `feeRecipient`. Submitting a score that does
+///         not beat your current best reverts, so you never pay for a no-op.
 contract Leaderboard {
+    address public owner;
+    address public feeRecipient;
+    uint256 public fee; // wei required to submit a new high score
+
     // bestScore[coin][player]
     mapping(bytes32 => mapping(address => uint256)) public bestScore;
 
@@ -9,11 +17,34 @@ contract Leaderboard {
     mapping(bytes32 => uint256[]) private _topScores;
 
     event ScoreSubmitted(bytes32 indexed coin, address indexed player, uint256 score);
+    event FeeUpdated(uint256 fee);
+    event FeeRecipientUpdated(address indexed recipient);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    function submitScore(bytes32 coin, uint256 score) external {
-        if (score <= bestScore[coin][msg.sender]) {
-            return;
-        }
+    error NotOwner();
+    error InsufficientFee();
+    error NotHighScore();
+    error FeeTransferFailed();
+    error ZeroAddress();
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert NotOwner();
+        _;
+    }
+
+    constructor(address feeRecipient_, uint256 fee_) {
+        if (feeRecipient_ == address(0)) revert ZeroAddress();
+        owner = msg.sender;
+        feeRecipient = feeRecipient_;
+        fee = fee_;
+        emit OwnershipTransferred(address(0), msg.sender);
+        emit FeeRecipientUpdated(feeRecipient_);
+        emit FeeUpdated(fee_);
+    }
+
+    function submitScore(bytes32 coin, uint256 score) external payable {
+        if (msg.value < fee) revert InsufficientFee();
+        if (score <= bestScore[coin][msg.sender]) revert NotHighScore();
 
         bestScore[coin][msg.sender] = score;
 
@@ -65,6 +96,14 @@ contract Leaderboard {
         }
 
         emit ScoreSubmitted(coin, msg.sender, score);
+
+        // Interactions last (checks-effects-interactions). Forward the whole
+        // payment to the recipient; the contract never custodies funds and any
+        // overpayment simply tips. feeRecipient is an EOA, so no reentrancy.
+        if (msg.value > 0) {
+            (bool ok, ) = feeRecipient.call{value: msg.value}("");
+            if (!ok) revert FeeTransferFailed();
+        }
     }
 
     function getTop(bytes32 coin)
@@ -81,5 +120,24 @@ contract Leaderboard {
             players[i] = tp[i];
             scores[i] = ts[i];
         }
+    }
+
+    // --- Admin ---
+
+    function setFee(uint256 fee_) external onlyOwner {
+        fee = fee_;
+        emit FeeUpdated(fee_);
+    }
+
+    function setFeeRecipient(address recipient_) external onlyOwner {
+        if (recipient_ == address(0)) revert ZeroAddress();
+        feeRecipient = recipient_;
+        emit FeeRecipientUpdated(recipient_);
+    }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        if (newOwner == address(0)) revert ZeroAddress();
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
     }
 }

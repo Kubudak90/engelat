@@ -48,7 +48,7 @@ lib/
   audio.ts                Web Audio synth (zero assets) + mute persistence
   haptics.ts              Farcaster haptics SDK with navigator.vibrate fallback
   coins.ts / cryptocom.ts / leaderboard.ts / miniapp.ts
-contracts/                Foundry project — per-coin Leaderboard (Base Sepolia)
+contracts/                Foundry project — per-coin Leaderboard (Base mainnet, tiny fee)
 ```
 
 The engine advances physics on a **fixed 60 fps timestep** (accumulator with a
@@ -73,6 +73,6 @@ existing vars — no new configuration is required.
 | var | purpose |
 | --- | --- |
 | `NEXT_PUBLIC_URL` | Public base URL (drives manifest, embed + share links). Baked in at build time. |
-| `NEXT_PUBLIC_LEADERBOARD_ADDRESS` | Deployed per-coin `Leaderboard` (Base Sepolia). |
+| `NEXT_PUBLIC_LEADERBOARD_ADDRESS` | Deployed per-coin `Leaderboard` (Base mainnet, 8453). Submitting a new best costs a tiny on-chain fee forwarded to the owner. |
 | `NEXT_PUBLIC_ONCHAINKIT_API_KEY` | Optional — enables full OnchainKit features. |
 | `FARCASTER_HEADER` / `FARCASTER_PAYLOAD` / `FARCASTER_SIGNATURE` | Signed manifest account association. |

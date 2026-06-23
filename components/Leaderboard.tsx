@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAccount, useReadContract } from "wagmi";
-import { baseSepolia } from "wagmi/chains";
+import { base } from "wagmi/chains";
 import { LEADERBOARD_ABI, LEADERBOARD_ADDRESS } from "@/lib/leaderboard";
 import { SUPPORTED_COINS, coinKey } from "@/lib/coins";
 
@@ -28,7 +28,7 @@ export function Leaderboard({ coin, refreshKey }: LeaderboardProps) {
     abi: LEADERBOARD_ABI,
     functionName: "getTop",
     args: [coinKey(viewCoin)],
-    chainId: baseSepolia.id,
+    chainId: base.id,
     query: { enabled: !!LEADERBOARD_ADDRESS },
   });
 
