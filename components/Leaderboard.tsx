@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useReadContract } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
 import { baseSepolia } from "wagmi/chains";
 import { LEADERBOARD_ABI, LEADERBOARD_ADDRESS } from "@/lib/leaderboard";
 import { SUPPORTED_COINS, coinKey } from "@/lib/coins";
@@ -17,6 +17,7 @@ interface LeaderboardProps {
 
 export function Leaderboard({ coin, refreshKey }: LeaderboardProps) {
   const [viewCoin, setViewCoin] = useState(coin);
+  const { address } = useAccount();
 
   useEffect(() => {
     setViewCoin(coin);
@@ -47,6 +48,10 @@ export function Leaderboard({ coin, refreshKey }: LeaderboardProps) {
     [],
     [],
   ];
+
+  const myIndex = address
+    ? players.findIndex((p) => p.toLowerCase() === address.toLowerCase())
+    : -1;
 
   return (
     <div
@@ -104,45 +109,59 @@ export function Leaderboard({ coin, refreshKey }: LeaderboardProps) {
           No scores yet. Be the first!
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {players.map((player, i) => (
-            <div
-              key={`${player}-${i}`}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                fontSize: 14,
-                padding: "4px 0",
-                borderBottom:
-                  i < players.length - 1 ? "1px solid rgba(255,255,255,0.1)" : undefined,
-              }}
-            >
-              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span
-                  style={{
-                    fontWeight: 700,
-                    width: 24,
-                    textAlign: "center",
-                    color:
-                      i === 0
-                        ? "#f7d794"
-                        : i === 1
-                          ? "#c0c0c0"
-                          : i === 2
-                            ? "#cd7f32"
-                            : "#fff",
-                  }}
-                >
-                  {i + 1}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {players.map((player, i) => {
+            const isMe = i === myIndex;
+            return (
+              <div
+                key={`${player}-${i}`}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  fontSize: 14,
+                  padding: "5px 8px",
+                  borderRadius: 8,
+                  background: isMe ? "rgba(233,69,96,0.18)" : undefined,
+                  border: isMe ? "1px solid rgba(233,69,96,0.5)" : "1px solid transparent",
+                }}
+              >
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      width: 24,
+                      textAlign: "center",
+                      color:
+                        i === 0
+                          ? "#f7d794"
+                          : i === 1
+                            ? "#c0c0c0"
+                            : i === 2
+                              ? "#cd7f32"
+                              : "#fff",
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                  <span style={{ fontFamily: "monospace", fontSize: 13 }}>
+                    {shortenAddress(player)}
+                  </span>
+                  {isMe && (
+                    <span style={{ fontSize: 11, color: "#e94560", fontWeight: 700 }}>
+                      siz
+                    </span>
+                  )}
                 </span>
-                <span style={{ fontFamily: "monospace", fontSize: 13 }}>
-                  {shortenAddress(player)}
-                </span>
-              </span>
-              <span style={{ fontWeight: 600 }}>{String(scores[i])}</span>
+                <span style={{ fontWeight: 600 }}>{String(scores[i])}</span>
+              </div>
+            );
+          })}
+          {address && myIndex === -1 && (
+            <div style={{ fontSize: 12, color: "#ffffff80", textAlign: "center", marginTop: 6 }}>
+              Henüz listede değilsin — skorunu gönder ve yerini al.
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

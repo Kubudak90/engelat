@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
   try {
     const res = await fetch(candlestickUrl(coin.instrument, "15m", 150), {
       cache: "no-store",
+      signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) throw new Error(`upstream ${res.status}`);
     const closes = parseCandlestickCloses(await res.json());

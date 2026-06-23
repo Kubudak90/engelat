@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
 import { FrameReady } from "@/components/FrameReady";
-import { baseUrl, assetUrls, buildEmbed, MINIAPP } from "@/lib/miniapp";
+import { baseUrl, assetUrls, MINIAPP } from "@/lib/miniapp";
 
 function safeUrl(value: string): URL {
   try {
@@ -25,9 +25,8 @@ export function generateMetadata(): Metadata {
       images: [a.hero],
     },
     icons: { icon: a.icon },
-    other: {
-      "fc:miniapp": JSON.stringify(buildEmbed(base)),
-    },
+    // The `fc:miniapp` embed is emitted per-route by app/page.tsx so a shared
+    // run can carry a score-specific image + deep link.
   };
 }
 

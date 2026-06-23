@@ -1,114 +1,76 @@
-"use client";
+import type { Metadata } from "next";
+import { GameShell } from "@/components/GameShell";
+import { isSupportedSymbol } from "@/lib/coins";
+import { baseUrl, assetUrls, MINIAPP } from "@/lib/miniapp";
+import { buildOgUrl, buildPlayUrl } from "@/lib/share";
 
-import { useState } from "react";
-import dynamic from "next/dynamic";
-import {
-  ConnectWallet,
-  Wallet,
-  WalletDropdown,
-  WalletDropdownDisconnect,
-} from "@coinbase/onchainkit/wallet";
-import { ScoreSubmit } from "@/components/ScoreSubmit";
-import { Leaderboard } from "@/components/Leaderboard";
-import { CoinPicker, type CoinSelection } from "@/components/CoinPicker";
+interface SearchParams {
+  coin?: string;
+  score?: string;
+}
 
-const Game = dynamic(() => import("@/components/Game").then((m) => m.Game), {
-  ssr: false,
-});
+// A shared run lands here as `?coin=BTC&score=42`. We validate it and, when
+// present, build a score-specific Mini App embed (dynamic image + "beat it"
+// button) so the cast unfurls into a branded, playable frame.
+function parseShare(sp: SearchParams) {
+  const coin = typeof sp.coin === "string" ? sp.coin.toUpperCase() : undefined;
+  const score = typeof sp.score === "string" ? parseInt(sp.score, 10) : NaN;
+  if (coin && isSupportedSymbol(coin) && Number.isFinite(score) && score >= 0) {
+    return { coin, score };
+  }
+  return null;
+}
 
-export default function HomePage() {
-  const [selected, setSelected] = useState<CoinSelection | null>(null);
-  const [gameOverData, setGameOverData] = useState<{ coin: string; score: number } | null>(
-    null
-  );
-  const [refreshKey, setRefreshKey] = useState(0);
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}): Promise<Metadata> {
+  const sp = await searchParams;
+  const base = baseUrl();
+  const a = assetUrls(base);
+  const share = parseShare(sp);
 
-  const handleSubmitted = () => setRefreshKey((k) => k + 1);
+  const imageUrl = share ? buildOgUrl(base, share.coin, share.score) : a.hero;
+  const homeUrl = share ? buildPlayUrl(base, share.coin, share.score) : a.home;
+  const buttonTitle = share ? `Beat ${share.score} on ${share.coin}` : MINIAPP.buttonTitle;
 
-  const changeCoin = () => {
-    setSelected(null);
-    setGameOverData(null);
+  const embed = {
+    version: "1",
+    imageUrl,
+    button: {
+      title: buttonTitle,
+      action: {
+        type: "launch_miniapp",
+        name: MINIAPP.name,
+        url: homeUrl,
+        splashImageUrl: a.splash,
+        splashBackgroundColor: MINIAPP.splashBackgroundColor,
+      },
+    },
   };
 
-  return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <div style={{ position: "absolute", top: 16, right: 16, zIndex: 20 }}>
-        <Wallet>
-          <ConnectWallet />
-          <WalletDropdown>
-            <WalletDropdownDisconnect />
-          </WalletDropdown>
-        </Wallet>
-      </div>
+  return {
+    title: share ? `${MINIAPP.name} — ${share.coin} · ${share.score}` : MINIAPP.name,
+    description: MINIAPP.description,
+    openGraph: {
+      title: MINIAPP.name,
+      description: MINIAPP.description,
+      images: [imageUrl],
+    },
+    other: {
+      "fc:miniapp": JSON.stringify(embed),
+    },
+  };
+}
 
-      {!selected ? (
-        <CoinPicker onSelect={setSelected} />
-      ) : (
-        <>
-          <button
-            onClick={changeCoin}
-            style={{
-              position: "absolute",
-              top: 16,
-              left: 16,
-              zIndex: 20,
-              padding: "6px 12px",
-              fontSize: 13,
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(0,0,0,0.4)",
-              color: "#fff",
-              cursor: "pointer",
-            }}
-          >
-            ← Coin değiştir
-          </button>
-
-          <Game
-            key={selected.coin}
-            coin={selected.coin}
-            closes={selected.closes}
-            last={selected.last}
-            onGameOver={(coin, score) => setGameOverData({ coin, score })}
-          />
-
-          {gameOverData && (
-            <div
-              style={{
-                position: "absolute",
-                bottom: 24,
-                textAlign: "center",
-                zIndex: 10,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 16,
-                maxHeight: "60vh",
-                overflowY: "auto",
-              }}
-            >
-              <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
-                {gameOverData.coin} · Final Score: {gameOverData.score}
-              </p>
-              <ScoreSubmit
-                coin={gameOverData.coin}
-                score={gameOverData.score}
-                onSubmitted={handleSubmitted}
-              />
-              <Leaderboard coin={gameOverData.coin} refreshKey={refreshKey} />
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const sp = await searchParams;
+  const coin = typeof sp.coin === "string" ? sp.coin.toUpperCase() : undefined;
+  const initialCoin = coin && isSupportedSymbol(coin) ? coin : null;
+  return <GameShell initialCoin={initialCoin} />;
 }

@@ -6,7 +6,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const res = await fetch(tickersUrl(), { cache: "no-store" });
+    const res = await fetch(tickersUrl(), {
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    });
     if (!res.ok) throw new Error(`upstream ${res.status}`);
     const all = parseTickerPrices(await res.json());
     const prices: Record<string, number> = {};

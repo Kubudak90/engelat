@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SUPPORTED_COINS } from "@/lib/coins";
+import { themeFor } from "@/lib/theme";
 
 export interface CoinSelection {
   coin: string;
@@ -53,17 +54,19 @@ export function CoinPicker({ onSelect }: CoinPickerProps) {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 16,
+        gap: 14,
         padding: 24,
         width: "100%",
-        maxWidth: 360,
+        maxWidth: 380,
       }}
     >
-      <h2 style={{ fontSize: 22, fontWeight: 800, textAlign: "center" }}>
-        Coin seç — grafiği parkurun olsun
+      <h1 style={{ fontSize: 30, fontWeight: 900, letterSpacing: 1 }}>ENGELAT</h1>
+      <h2 style={{ fontSize: 17, fontWeight: 700, textAlign: "center" }}>
+        Bir coin seç — grafiği parkurun olsun
       </h2>
-      <p style={{ fontSize: 13, color: "#ffffff99", textAlign: "center" }}>
-        Seçtiğin coin&apos;in son 150 mumu bir tünele dönüşür.
+      <p style={{ fontSize: 13, color: "#ffffff99", textAlign: "center", marginTop: -4 }}>
+        Seçtiğin coin&apos;in canlı 150 mumu bir tünele dönüşür. Coin&apos;leri topla,
+        combo&apos;yu büyüt, skorunu paylaş.
       </p>
 
       <div
@@ -77,29 +80,38 @@ export function CoinPicker({ onSelect }: CoinPickerProps) {
         {SUPPORTED_COINS.map((c) => {
           const loading = loadingCoin === c.symbol;
           const price = prices[c.symbol];
+          const theme = themeFor(c.symbol);
           return (
             <button
               key={c.symbol}
               disabled={loadingCoin !== null}
               onClick={() => pick(c.symbol)}
               style={{
+                position: "relative",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "flex-start",
                 gap: 4,
                 padding: "14px 16px",
-                borderRadius: 12,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: loading ? "#0f3460" : "rgba(255,255,255,0.06)",
+                paddingLeft: 18,
+                borderRadius: 14,
+                border: `1px solid ${loading ? theme.accent : "rgba(255,255,255,0.12)"}`,
+                borderLeft: `4px solid ${theme.accent}`,
+                background: loading
+                  ? `linear-gradient(135deg, ${theme.bgTop}, ${theme.bgBottom})`
+                  : "rgba(255,255,255,0.05)",
                 color: "#fff",
                 cursor: loadingCoin !== null ? "default" : "pointer",
                 opacity: loadingCoin !== null && !loading ? 0.5 : 1,
                 textAlign: "left",
+                transition: "opacity 120ms",
               }}
             >
-              <span style={{ fontSize: 18, fontWeight: 700 }}>{c.symbol}</span>
+              <span style={{ fontSize: 18, fontWeight: 800, color: theme.accent }}>
+                {c.symbol}
+              </span>
               <span style={{ fontSize: 12, color: "#ffffff99" }}>{c.name}</span>
-              <span style={{ fontSize: 13, color: "#f7d794" }}>
+              <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>
                 {loading
                   ? "yükleniyor…"
                   : price !== undefined
@@ -112,9 +124,7 @@ export function CoinPicker({ onSelect }: CoinPickerProps) {
       </div>
 
       {error && (
-        <p style={{ fontSize: 13, color: "#e94560", textAlign: "center" }}>
-          {error}
-        </p>
+        <p style={{ fontSize: 13, color: "#e94560", textAlign: "center" }}>{error}</p>
       )}
     </div>
   );
