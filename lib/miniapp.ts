@@ -6,9 +6,9 @@ export const MINIAPP = {
   description:
     "A Flappy-style game where a coin's live price chart becomes the obstacle course. Compete on an onchain per-coin leaderboard on Base.",
   tagline: "Dodge live markets",
-  ogTitle: "Engelat — Live Chart Arcade",
+  ogTitle: "Engelat - Live Chart Arcade",
   ogDescription:
-    "Fly through live BTC, ETH, SOL, XRP & DOGE charts. Beat the canyon, cast your score.",
+    "Fly through live BTC, ETH, SOL, XRP and DOGE charts. Beat the canyon, cast your score.",
   buttonTitle: "Play Engelat",
   primaryCategory: "games",
   tags: ["game", "arcade", "crypto", "chart", "base"],
