@@ -7,9 +7,9 @@
 // FARCASTER_SIGNATURE (which the route reads) and the app is redeployed.
 export const minikitConfig = {
   accountAssociation: {
-    header: "eyJmaWQiOjE4ODA2MSwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDFENTgzMjgyMDU0MjlEMzljRTIxYTEzRGNEM0ZlQjczMTgwQzlCMjAifQ",
+    header: "eyJmaWQiOjE4ODA1MSwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweEY2MzI5NThmMThhNkU1NmZFNTYzNWM5NTRkMTY5MTFGZTQ3ODc4OTgifQ",
     payload: "eyJkb21haW4iOiJlbmdlbGF0LnZlcmNlbC5hcHAifQ",
-    signature: "MHhjODgxNWIyMzE3NDdmNWY1ZGU2MjI0ZWMxNGQ3ZmZhYTJkZTQ2ZjBhNzdhMzdhMDc3N2IzNDNlOWUxYmViZWRjMjM2ZDMxNzYzODg3ZjUxNmI5N2Q5OThiNTkwZGRkNjQ1NDlmY2Y0NmFlNmVkMjcxYTg5Nzg0OTE5MTI4MjMyNTFi",
+    signature: "53UHykhxuoIs51Dq1qJ76UfMnHbJ/L7pzUgvL4NX6kMjLwHLCfrantlCLgP5onOKW/alUL9nR1KU0veDR4yM8Bw=",
   },
   miniapp: {
     version: "1",
