@@ -18,6 +18,7 @@ describe("miniapp", () => {
       icon: "https://x.com/icon.png",
       splash: "https://x.com/splash.png",
       hero: "https://x.com/hero.png",
+      screenshot: "https://x.com/screenshot.png",
       home: "https://x.com",
     });
   });
@@ -42,6 +43,10 @@ describe("miniapp", () => {
     expect(m.miniapp.homeUrl).toBe("https://x.com");
     expect(m.miniapp.primaryCategory).toBe("games");
     expect(m.miniapp.splashBackgroundColor).toBe(MINIAPP.splashBackgroundColor);
+    expect(m.miniapp.screenshotUrls).toEqual(["https://x.com/screenshot.png"]);
+    expect(m.miniapp.heroImageUrl).toBe("https://x.com/hero.png");
+    expect(m.miniapp.ogTitle).toBe(MINIAPP.ogTitle);
+    expect(m.miniapp.tagline).toBe(MINIAPP.tagline);
   });
 
   it("buildManifest includes accountAssociation when provided", () => {

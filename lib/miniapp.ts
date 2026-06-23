@@ -5,9 +5,13 @@ export const MINIAPP = {
   subtitle: "Fly through the chart",
   description:
     "A Flappy-style game where a coin's live price chart becomes the obstacle course. Compete on an onchain per-coin leaderboard on Base.",
+  tagline: "Dodge live markets",
+  ogTitle: "Engelat — Live Chart Arcade",
+  ogDescription:
+    "Fly through live BTC, ETH, SOL, XRP & DOGE charts. Beat the canyon, cast your score.",
   buttonTitle: "Play Engelat",
   primaryCategory: "games",
-  tags: ["game", "flappy", "crypto", "chart"],
+  tags: ["game", "arcade", "crypto", "chart", "base"],
   splashBackgroundColor: "#1a1a2e",
 } as const;
 
@@ -31,6 +35,7 @@ export function assetUrls(base: string) {
     icon: `${b}/icon.png`,
     splash: `${b}/splash.png`,
     hero: `${b}/hero.png`,
+    screenshot: `${b}/screenshot.png`,
     home: b,
   };
 }
@@ -77,8 +82,13 @@ export function buildManifest(
       splashImageUrl: a.splash,
       splashBackgroundColor: MINIAPP.splashBackgroundColor,
       heroImageUrl: a.hero,
+      screenshotUrls: [a.screenshot],
       primaryCategory: MINIAPP.primaryCategory,
       tags: [...MINIAPP.tags],
+      tagline: MINIAPP.tagline,
+      ogTitle: MINIAPP.ogTitle,
+      ogDescription: MINIAPP.ogDescription,
+      ogImageUrl: a.hero,
     },
   };
   if (assoc) manifest.accountAssociation = assoc;
